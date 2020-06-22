@@ -43,7 +43,7 @@ ingress:
     - host: chart-example.local
       paths: []
   tls: []
-  #  - secretName: chart-example-tls
+  #  - secretName: motioneye-tls
   #    hosts:
   #      - chart-example.local
 
