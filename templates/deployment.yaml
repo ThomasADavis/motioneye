@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "motioneye.fullname" . }}
+  labels:
+    {{- include "motioneye.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "motioneye.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "motioneye.selectorLabels" . | nindent 8 }}
+    spec:
+    {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      serviceAccountName: {{ include "motioneye.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          volumeMounts:
+            - mountPath: /etc/localtime
+              name: localtime
+              readOnly: true
+            - mountPath: /etc/timezone
+              name: timezone
+              readOnly: true
+            - mountPath: /etc/motioneye
+              name: config
+            - mountPath: /var/lib/motioneye
+              name: storage
+          ports:
+            - name: http
+              containerPort: 8765
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: {{ include "motioneye.fullname" . }}-config
+        - name: storage
+          persistentVolumeClaim:
+            claimName: {{ include "motioneye.fullname" . }}-storage
+        - name: localtime
+          hostPath:
+            path: /etc/localtime
+        - name: timezone
+          hostPath:
+            path: /etc/timezone
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
