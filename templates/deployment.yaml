@@ -25,7 +25,7 @@ spec:
         - name: {{ .Chart.Name }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.image.repository }}:{{ .Chart.AppVersion }}"
+          image: "{{ .Values.image.repository }}:{{ include "motioneye.imageTag" . }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           volumeMounts:
             - mountPath: /etc/localtime
@@ -37,7 +37,7 @@ spec:
             - mountPath: /etc/motioneye
               name: config
             - mountPath: /var/lib/motioneye
-              name: storage
+              name: data
           ports:
             - name: http
               containerPort: 8765
@@ -59,16 +59,27 @@ spec:
       volumes:
         - name: config
           persistentVolumeClaim:
-            claimName: {{ include "motioneye.fullname" . }}-config
-        - name: storage
+            claimName: {{ include "motioneye.configPVCName" . }}
+        {{- else }}
+          emptyDir: {}
+        {{- end }}
+        - name: data
+        {{- if .Values.persistence.data.enabled }}
           persistentVolumeClaim:
-            claimName: {{ include "motioneye.fullname" . }}-storage
+            claimName: {{ include "motioneye.dataPVCName" . }}
+        {{- else }}
+          emptyDir: {}
+        {{- end }}
         - name: localtime
           hostPath:
             path: /etc/localtime
         - name: timezone
           hostPath:
             path: /etc/timezone
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
     {{- with .Values.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
